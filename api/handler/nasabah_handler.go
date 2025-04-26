@@ -66,10 +66,15 @@ func (h *NasabahHandler) GetSaldo(c echo.Context) error {
 	if err != nil {
 		// Check if error is "no rows in result set"
 		if errors.Is(err, sql.ErrNoRows) {
+
+			c.Logger().Info(err.Error())
+
 			return c.JSON(http.StatusBadRequest, map[string]string{
 				"remark": "Nomor rekening tidak dikenali",
 			})
 		}
+
+		c.Logger().Warn(err.Error())
 
 		// Other unknown/internal error
 		return c.JSON(http.StatusInternalServerError, map[string]string{
@@ -81,10 +86,111 @@ func (h *NasabahHandler) GetSaldo(c echo.Context) error {
 
 }
 
-func (h *NasabahHandler) Withdraw(c echo.Context) error {
-	return nil
-}
-
 func (h *NasabahHandler) Deposit(c echo.Context) error {
-	return nil
+	var req model.TransactionPayload
+
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{"remark": err.Error()})
+	}
+
+	// Validate the struct
+	if err := util.Validator.Struct(req); err != nil {
+
+		// Check if the error is a validation error
+		if _, ok := err.(*validator.ValidationErrors); !ok {
+
+			c.Logger().Info(err)
+
+			// Custom error handling
+			return c.JSON(http.StatusBadRequest, map[string]string{
+				"remark": "Nomor rekening tidak valid",
+			})
+		}
+
+		// Custom error handling
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"remark": err.Error(),
+		})
+	}
+
+	amount, err := h.TransactionService.DepositMoney(c.Request().Context(), req.NasabahId, req.Amount)
+	if err != nil {
+		// Check if error is "no rows in result set"
+		if errors.Is(err, sql.ErrNoRows) {
+
+			c.Logger().Info(err.Error())
+
+			return c.JSON(http.StatusBadRequest, map[string]string{
+				"remark": "Nomor rekening tidak dikenali",
+			})
+		}
+
+		c.Logger().Warn(err.Error())
+
+		// Other unknown/internal error
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"remark": "Terjadi kesalahan internal",
+		})
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{"saldo": amount})
+}
+func (h *NasabahHandler) Withdraw(c echo.Context) error {
+	var req model.TransactionPayload
+
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{"remark": err.Error()})
+	}
+
+	// Validate the struct
+	if err := util.Validator.Struct(req); err != nil {
+
+		// Check if the error is a validation error
+		if _, ok := err.(*validator.ValidationErrors); !ok {
+
+			c.Logger().Info(err)
+
+			// Custom error handling
+			return c.JSON(http.StatusBadRequest, map[string]string{
+				"remark": "Nomor rekening tidak valid",
+			})
+		}
+
+		// Custom error handling
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"remark": err.Error(),
+		})
+	}
+
+	amount, err := h.TransactionService.WithdrawMoney(c.Request().Context(), req.NasabahId, req.Amount)
+	if err != nil {
+		// Check if error is "no rows in result set"
+		if errors.Is(err, sql.ErrNoRows) {
+
+			c.Logger().Info(err.Error())
+
+			return c.JSON(http.StatusBadRequest, map[string]string{
+				"remark": "Nomor rekening tidak dikenali",
+			})
+		}
+
+		if errors.Is(err, util.ErrInsufficientBalance) {
+
+			c.Logger().Info(err.Error())
+
+			return c.JSON(http.StatusBadRequest, map[string]string{
+				"remark": "Saldo tidak mencukupi",
+			})
+
+		}
+
+		c.Logger().Warn(err.Error())
+
+		// Other unknown/internal error
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"remark": err.Error(),
+		})
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{"saldo": amount})
 }
