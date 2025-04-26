@@ -28,3 +28,7 @@ type CheckByNikOrPhoneNumber struct {
 	Nik         string `json:"nik"`
 	PhoneNumber string `json:"phone_number"`
 }
+
+type GetSaldoParameter struct {
+	RekeningNumber string `param:"no_rekening" validate:"required,numeric"`
+}
