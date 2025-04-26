@@ -1,0 +1,12 @@
+/vendor
+.env
+# Ignore semua gambar
+storage/public/images/**/*.jpg
+storage/public/images/**/*.png
+storage/public/images/**/*.jpeg
+storage/public/images/**/*.gif
+storage/public/images/**/*.webp
+
+# Ignore folder uploads
+storage/public/uploads/
+/uploads
