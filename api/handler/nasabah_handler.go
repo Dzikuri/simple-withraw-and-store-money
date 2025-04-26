@@ -1,10 +1,14 @@
 package handler
 
 import (
+	"database/sql"
+	"errors"
 	"net/http"
 
 	"github.com/dzikuri/simple-withdraw-and-store-money/model"
 	"github.com/dzikuri/simple-withdraw-and-store-money/service"
+	"github.com/dzikuri/simple-withdraw-and-store-money/util"
+	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 )
 
@@ -33,7 +37,48 @@ func (h *NasabahHandler) CreateNasabah(c echo.Context) error {
 }
 
 func (h *NasabahHandler) GetSaldo(c echo.Context) error {
-	return nil
+
+	param := model.GetSaldoParameter{
+		RekeningNumber: c.Param("no_rekening"),
+	}
+
+	// Validate the struct
+	if err := util.Validator.Struct(param); err != nil {
+
+		// Check if the error is a validation error
+		if _, ok := err.(*validator.ValidationErrors); !ok {
+
+			c.Logger().Info(err)
+
+			// Custom error handling
+			return c.JSON(http.StatusBadRequest, map[string]string{
+				"remark": "Nomor rekening tidak valid",
+			})
+		}
+
+		// Custom error handling
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"remark": err.Error(),
+		})
+	}
+
+	result, err := h.TransactionService.CheckSaldo(c.Request().Context(), param.RekeningNumber)
+	if err != nil {
+		// Check if error is "no rows in result set"
+		if errors.Is(err, sql.ErrNoRows) {
+			return c.JSON(http.StatusBadRequest, map[string]string{
+				"remark": "Nomor rekening tidak dikenali",
+			})
+		}
+
+		// Other unknown/internal error
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"remark": "Terjadi kesalahan internal",
+		})
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{"saldo": result})
+
 }
 
 func (h *NasabahHandler) Withdraw(c echo.Context) error {
