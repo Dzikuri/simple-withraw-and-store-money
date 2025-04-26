@@ -38,13 +38,14 @@ func (r *nasabahRepository) Create(ctx context.Context, payload *model.CreateNas
 func (r *nasabahRepository) GetNasabahById(ctx context.Context, id string) (*model.Nasabah, error) {
 	var data model.Nasabah
 	err := r.db.QueryRow(ctx, `
-        SELECT id, name, nik, phone_number, total_money
+        SELECT id, name, nik, phone_number, rekening_number, total_money
         FROM nasabah
         WHERE id = $1`, id).Scan(
 		&data.Id,
 		&data.Name,
 		&data.Nik,
 		&data.PhoneNumber,
+		&data.RekeningNumber,
 		&data.TotalMoney)
 	if err != nil {
 		return nil, err
@@ -55,12 +56,17 @@ func (r *nasabahRepository) GetNasabahById(ctx context.Context, id string) (*mod
 func (r *nasabahRepository) GetNasabahByRekeningNumber(ctx context.Context, rekeningNumber int64) (*model.Nasabah, error) {
 	var data model.Nasabah
 	err := r.db.QueryRow(ctx, `
-        SELECT id, name, nik, phone_number, total_money FROM nasabah WHERE rekening_number = $1`, rekeningNumber).Scan(
+        SELECT id, name, nik, phone_number, rekening_number, total_money
+        FROM nasabah
+        WHERE rekening_number = $1
+    `, rekeningNumber).Scan(
 		&data.Id,
 		&data.Name,
 		&data.Nik,
 		&data.PhoneNumber,
-		&data.TotalMoney)
+		&data.RekeningNumber,
+		&data.TotalMoney,
+	)
 	if err != nil {
 		return nil, err
 	}

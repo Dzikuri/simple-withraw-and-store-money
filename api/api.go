@@ -17,6 +17,7 @@ import (
 	"github.com/dzikuri/simple-withdraw-and-store-money/service"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
 
 type APIserve struct {
@@ -30,6 +31,8 @@ func NewAPIServe(db *pgxpool.Pool) *APIserve {
 func (r *APIserve) Serve() {
 	// NOTE: Echo Framework
 	e := echo.New()
+
+	e.Use(middleware.Logger())
 
 	// NOTE: Health Check
 	e.GET("/health", func(c echo.Context) error {
