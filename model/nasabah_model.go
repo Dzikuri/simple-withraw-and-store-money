@@ -19,9 +19,9 @@ func (n *Nasabah) TableName() string {
 }
 
 type CreateNasabah struct {
-	Name        string `json:"name"`
+	Name        string `json:"nama"`
 	Nik         string `json:"nik"`
-	PhoneNumber string `json:"phone_number"`
+	PhoneNumber string `json:"no_hp"`
 }
 
 type CheckByNikOrPhoneNumber struct {
