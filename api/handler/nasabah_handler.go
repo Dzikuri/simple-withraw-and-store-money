@@ -116,7 +116,7 @@ func (h *NasabahHandler) Deposit(c echo.Context) error {
 
 	if err := c.Bind(&req); err != nil {
 		h.Logger.Warn().Err(err).Msg("Handler: Error binding request")
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{"remark": err.Error()})
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{"remark": "Request tidak valid"})
 	}
 
 	// NOTE: Validate the struct
