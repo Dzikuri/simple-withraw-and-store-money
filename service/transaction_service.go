@@ -6,6 +6,7 @@ import (
 
 	"github.com/dzikuri/simple-withdraw-and-store-money/repository"
 	"github.com/dzikuri/simple-withdraw-and-store-money/util"
+	"github.com/rs/zerolog"
 )
 
 type TransactionService interface {
@@ -17,10 +18,11 @@ type TransactionService interface {
 type transactionService struct {
 	TransactionRepository repository.NasabahTransactionRepository
 	NasabahRepository     repository.NasabahRepository
+	Logger                zerolog.Logger
 }
 
-func NewTransactionService(transactionRepository repository.NasabahTransactionRepository, nasabahRepository repository.NasabahRepository) TransactionService {
-	return &transactionService{TransactionRepository: transactionRepository, NasabahRepository: nasabahRepository}
+func NewTransactionService(transactionRepository repository.NasabahTransactionRepository, nasabahRepository repository.NasabahRepository, logger zerolog.Logger) TransactionService {
+	return &transactionService{TransactionRepository: transactionRepository, NasabahRepository: nasabahRepository, Logger: logger}
 }
 
 func (t *transactionService) CheckSaldo(ctx context.Context, nasabahId string) (int64, error) {

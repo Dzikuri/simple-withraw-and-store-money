@@ -5,6 +5,7 @@ import (
 
 	"github.com/dzikuri/simple-withdraw-and-store-money/model"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/rs/zerolog"
 )
 
 type NasabahRepository interface {
@@ -15,11 +16,12 @@ type NasabahRepository interface {
 }
 
 type nasabahRepository struct {
-	db *pgxpool.Pool
+	db     *pgxpool.Pool
+	logger zerolog.Logger
 }
 
-func NewNasabahRepository(db *pgxpool.Pool) *nasabahRepository {
-	return &nasabahRepository{db: db}
+func NewNasabahRepository(db *pgxpool.Pool, logger zerolog.Logger) *nasabahRepository {
+	return &nasabahRepository{db: db, logger: logger}
 }
 
 func (r *nasabahRepository) Create(ctx context.Context, payload *model.CreateNasabah) (string, error) {

@@ -10,27 +10,50 @@ import (
 	"github.com/dzikuri/simple-withdraw-and-store-money/util"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
+	"github.com/rs/zerolog"
 )
 
 type NasabahHandler struct {
 	RegisterService    service.RegisterService
 	TransactionService service.TransactionService
+	Logger             zerolog.Logger
 }
 
-func NewNasabahHandler(registerService service.RegisterService, transactionService service.TransactionService) *NasabahHandler {
-	return &NasabahHandler{RegisterService: registerService, TransactionService: transactionService}
+func NewNasabahHandler(registerService service.RegisterService, transactionService service.TransactionService, logger zerolog.Logger) *NasabahHandler {
+	return &NasabahHandler{RegisterService: registerService, TransactionService: transactionService, Logger: logger}
 }
 
 func (h *NasabahHandler) CreateNasabah(c echo.Context) error {
 	var req model.CreateNasabah
 
 	if err := c.Bind(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{"remark": err.Error()})
+		h.Logger.Warn().Err(err).Msg("Handler: Error binding request")
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{"remark": "Request tidak valid"})
+	}
+
+	// NOTE: Validate the struct
+	if err := util.Validator.Struct(req); err != nil {
+		if _, ok := err.(*validator.ValidationErrors); !ok {
+			h.Logger.Warn().Err(err).Msg("Handler: Error binding request")
+			return c.JSON(http.StatusBadRequest, map[string]interface{}{"remark": "Request tidak valid"})
+		}
+
+		h.Logger.Warn().Err(err).Msg("Handler: Error binding request")
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{"remark": "Request tidak valid"})
 	}
 
 	rekeningNumber, err := h.RegisterService.RegisterNasabah(c.Request().Context(), &req)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]interface{}{"remark": err.Error()})
+
+		if errors.Is(err, util.ErrNasabahAlreadyExist) {
+			h.Logger.Warn().Err(err).Msg("Handler: Error binding request")
+
+			return c.JSON(http.StatusConflict, map[string]interface{}{"remark": "NIK atau nomor handphone sudah terdaftar"})
+		}
+
+		h.Logger.Warn().Err(err).Msg("Handler: Internal server error")
+
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{"remark": "Terjadi kesalahan pada server"})
 	}
 
 	return c.JSON(http.StatusOK, map[string]interface{}{"rekening_number": rekeningNumber})
@@ -42,13 +65,13 @@ func (h *NasabahHandler) GetSaldo(c echo.Context) error {
 		RekeningNumber: c.Param("no_rekening"),
 	}
 
-	// Validate the struct
+	// NOTE: Validate the struct
 	if err := util.Validator.Struct(param); err != nil {
 
 		// Check if the error is a validation error
 		if _, ok := err.(*validator.ValidationErrors); !ok {
 
-			c.Logger().Info(err)
+			h.Logger.Warn().Err(err).Msg("Handler: Error binding request")
 
 			// Custom error handling
 			return c.JSON(http.StatusBadRequest, map[string]string{
@@ -56,9 +79,11 @@ func (h *NasabahHandler) GetSaldo(c echo.Context) error {
 			})
 		}
 
+		h.Logger.Warn().Err(err).Msg("Handler: Error binding request")
+
 		// Custom error handling
 		return c.JSON(http.StatusBadRequest, map[string]string{
-			"remark": err.Error(),
+			"remark": "Nomor rekening tidak valid",
 		})
 	}
 
@@ -67,14 +92,14 @@ func (h *NasabahHandler) GetSaldo(c echo.Context) error {
 		// Check if error is "no rows in result set"
 		if errors.Is(err, sql.ErrNoRows) {
 
-			c.Logger().Info(err.Error())
+			h.Logger.Warn().Err(err).Msg("Handler: Error binding request")
 
 			return c.JSON(http.StatusBadRequest, map[string]string{
 				"remark": "Nomor rekening tidak dikenali",
 			})
 		}
 
-		c.Logger().Warn(err.Error())
+		h.Logger.Warn().Err(err).Msg("Handler: Error binding request")
 
 		// Other unknown/internal error
 		return c.JSON(http.StatusInternalServerError, map[string]string{
@@ -90,10 +115,11 @@ func (h *NasabahHandler) Deposit(c echo.Context) error {
 	var req model.TransactionPayload
 
 	if err := c.Bind(&req); err != nil {
+		h.Logger.Warn().Err(err).Msg("Handler: Error binding request")
 		return c.JSON(http.StatusBadRequest, map[string]interface{}{"remark": err.Error()})
 	}
 
-	// Validate the struct
+	// NOTE: Validate the struct
 	if err := util.Validator.Struct(req); err != nil {
 
 		// Check if the error is a validation error
@@ -102,15 +128,20 @@ func (h *NasabahHandler) Deposit(c echo.Context) error {
 			for _, fieldError := range validationErrors {
 				switch fieldError.Field() {
 				case "NasabahId":
+					h.Logger.Warn().Err(err).Msg("Handler: Error binding request")
+
 					return c.JSON(http.StatusBadRequest, map[string]string{
 						"remark": "Nomor rekening tidak valid",
 					})
 				case "Amount":
+					h.Logger.Warn().Err(err).Msg("Handler: Error binding request")
+
 					if fieldError.Tag() == "gt" {
 						return c.JSON(http.StatusBadRequest, map[string]string{
 							"remark": "Nominal harus lebih besar dari 0",
 						})
 					}
+
 					return c.JSON(http.StatusBadRequest, map[string]string{
 						"remark": "Nominal tidak valid",
 					})
@@ -119,7 +150,7 @@ func (h *NasabahHandler) Deposit(c echo.Context) error {
 		}
 
 		// Fallback unknown error
-		c.Logger().Info(err)
+		h.Logger.Warn().Err(err).Msg("Handler: Error binding request")
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"remark": "Request tidak valid",
 		})
@@ -130,14 +161,14 @@ func (h *NasabahHandler) Deposit(c echo.Context) error {
 		// Check if error is "no rows in result set"
 		if errors.Is(err, sql.ErrNoRows) {
 
-			c.Logger().Info(err.Error())
+			h.Logger.Warn().Err(err).Msg("Handler: Error binding request")
 
 			return c.JSON(http.StatusBadRequest, map[string]string{
 				"remark": "Nomor rekening tidak dikenali",
 			})
 		}
 
-		c.Logger().Warn(err.Error())
+		h.Logger.Warn().Err(err).Msg("Handler: Error binding request")
 
 		// Other unknown/internal error
 		return c.JSON(http.StatusInternalServerError, map[string]string{
@@ -151,11 +182,11 @@ func (h *NasabahHandler) Withdraw(c echo.Context) error {
 	var req model.TransactionPayload
 
 	if err := c.Bind(&req); err != nil {
-		c.Logger().Infof("Error binding request: %v", err)
+		h.Logger.Warn().Err(err).Msg("Handler: Error binding request")
 		return c.JSON(http.StatusBadRequest, map[string]interface{}{"remark": "Request tidak valid"})
 	}
 
-	// Validate the struct
+	// NOTE: Validate the struct
 	if err := util.Validator.Struct(req); err != nil {
 
 		// Check if the error is a validation error
@@ -164,10 +195,14 @@ func (h *NasabahHandler) Withdraw(c echo.Context) error {
 			for _, fieldError := range validationErrors {
 				switch fieldError.Field() {
 				case "NasabahId":
+					h.Logger.Warn().Err(err).Msg("Handler: Error binding request")
+
 					return c.JSON(http.StatusBadRequest, map[string]string{
 						"remark": "Nomor rekening tidak valid",
 					})
 				case "Amount":
+					h.Logger.Warn().Err(err).Msg("Handler: Error binding request")
+
 					if fieldError.Tag() == "gt" {
 						return c.JSON(http.StatusBadRequest, map[string]string{
 							"remark": "Nominal harus lebih besar dari 0",
@@ -181,7 +216,8 @@ func (h *NasabahHandler) Withdraw(c echo.Context) error {
 		}
 
 		// Fallback unknown error
-		c.Logger().Info(err)
+		h.Logger.Warn().Err(err).Msg("Handler: Error binding request")
+
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"remark": "Request tidak valid",
 		})
@@ -192,7 +228,7 @@ func (h *NasabahHandler) Withdraw(c echo.Context) error {
 		// Check if error is "no rows in result set"
 		if errors.Is(err, sql.ErrNoRows) {
 
-			c.Logger().Info(err.Error())
+			h.Logger.Warn().Err(err).Msg("Handler: Error binding request")
 
 			return c.JSON(http.StatusBadRequest, map[string]string{
 				"remark": "Nomor rekening tidak dikenali",
@@ -201,7 +237,7 @@ func (h *NasabahHandler) Withdraw(c echo.Context) error {
 
 		if errors.Is(err, util.ErrInsufficientBalance) {
 
-			c.Logger().Info(err.Error())
+			h.Logger.Warn().Err(err).Msg("Handler: Error binding request")
 
 			return c.JSON(http.StatusBadRequest, map[string]string{
 				"remark": "Saldo tidak mencukupi",
@@ -209,11 +245,11 @@ func (h *NasabahHandler) Withdraw(c echo.Context) error {
 
 		}
 
-		c.Logger().Warn(err.Error())
+		h.Logger.Warn().Err(err).Msg("Handler: Internal Server Error")
 
 		// Other unknown/internal error
 		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"remark": err.Error(),
+			"remark": "Terjadi kesalahan internal",
 		})
 	}
 

@@ -19,9 +19,9 @@ func (n *Nasabah) TableName() string {
 }
 
 type CreateNasabah struct {
-	Name        string `json:"nama"`
-	Nik         string `json:"nik"`
-	PhoneNumber string `json:"no_hp"`
+	Name        string `json:"nama" validate:"required"`
+	Nik         string `json:"nik" validate:"required,gt=0"`
+	PhoneNumber string `json:"no_hp" validate:"required,numeric"`
 }
 
 type TransactionPayload struct {
@@ -30,8 +30,8 @@ type TransactionPayload struct {
 }
 
 type CheckByNikOrPhoneNumber struct {
-	Nik         string `json:"nik"`
-	PhoneNumber string `json:"phone_number"`
+	Nik         string `json:"nik" validate:"required,gt=0"`
+	PhoneNumber string `json:"phone_number" validate:"required,numeric"`
 }
 
 type GetSaldoParameter struct {
