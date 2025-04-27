@@ -14,7 +14,7 @@ func main() {
 	logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
 
 	// NOTE: Call Database Connection
-	dbPool, err := util.ConnectDB()
+	dbPool, err := util.ConnectDB(logger)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to connect to database")
 	}

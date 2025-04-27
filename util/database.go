@@ -7,7 +7,7 @@ import (
 
 	"github.com/dzikuri/simple-withdraw-and-store-money/config"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/labstack/gommon/log"
+	"github.com/rs/zerolog"
 )
 
 // ConnectDB returns a new connection pool for the configured PostgreSQL
@@ -20,7 +20,7 @@ import (
 // to 5 minutes. It also pings the database to ensure the connection is alive.
 //
 // If any error occurs, it will be logged and returned as an error.
-func ConnectDB() (*pgxpool.Pool, error) {
+func ConnectDB(logger zerolog.Logger) (*pgxpool.Pool, error) {
 	{
 		host := config.ConfigEnv.DBHost
 		user := config.ConfigEnv.DBUsername
@@ -31,10 +31,9 @@ func ConnectDB() (*pgxpool.Pool, error) {
 
 		dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s", user, password, host, port, dbname, sslmode)
 
-		// TODO: Need to use Logrus or ZeroLogger
 		pool, err := pgxpool.ParseConfig(dsn)
 		if err != nil {
-			log.Fatalf("Failed to parse config: %v", err)
+			logger.Fatal().Err(err).Msg("Failed to parse config")
 			return nil, fmt.Errorf("failed to parse config: %v", err)
 		}
 
@@ -47,21 +46,18 @@ func ConnectDB() (*pgxpool.Pool, error) {
 		defer cancel()
 
 		dbPool, err := pgxpool.NewWithConfig(ctx, pool)
-		// TODO: Need to use Logrus or ZeroLogger
 		if err != nil {
-			log.Fatalf("Failed to create pool: %v", err)
+			logger.Fatal().Err(err).Msg("Failed to create pool")
 			return nil, fmt.Errorf("failed to create pool: %v", err)
 		}
 
 		// NOTE: Ping the database to ensure connection is alive
-		// TODO: Need to use Logrus or ZeroLogger
 		if err := dbPool.Ping(ctx); err != nil {
-			log.Fatalf("Failed to ping database: %v", err)
+			logger.Fatal().Err(err).Msg("Failed to ping database")
 			return nil, fmt.Errorf("failed to ping database: %v", err)
 		}
 
-		// TODO: Need to use Logrus or ZeroLogger
-		log.Info("Connected to database")
+		logger.Info().Msg("Connected to database")
 
 		return dbPool, nil
 	}
