@@ -97,19 +97,31 @@ func (h *NasabahHandler) Deposit(c echo.Context) error {
 	if err := util.Validator.Struct(req); err != nil {
 
 		// Check if the error is a validation error
-		if _, ok := err.(*validator.ValidationErrors); !ok {
-
-			c.Logger().Info(err)
-
-			// Custom error handling
-			return c.JSON(http.StatusBadRequest, map[string]string{
-				"remark": "Nomor rekening tidak valid",
-			})
+		var validationErrors validator.ValidationErrors
+		if errors.As(err, &validationErrors) {
+			for _, fieldError := range validationErrors {
+				switch fieldError.Field() {
+				case "NasabahId":
+					return c.JSON(http.StatusBadRequest, map[string]string{
+						"remark": "Nomor rekening tidak valid",
+					})
+				case "Amount":
+					if fieldError.Tag() == "gt" {
+						return c.JSON(http.StatusBadRequest, map[string]string{
+							"remark": "Nominal harus lebih besar dari 0",
+						})
+					}
+					return c.JSON(http.StatusBadRequest, map[string]string{
+						"remark": "Nominal tidak valid",
+					})
+				}
+			}
 		}
 
-		// Custom error handling
+		// Fallback unknown error
+		c.Logger().Info(err)
 		return c.JSON(http.StatusBadRequest, map[string]string{
-			"remark": err.Error(),
+			"remark": "Request tidak valid",
 		})
 	}
 
@@ -139,26 +151,39 @@ func (h *NasabahHandler) Withdraw(c echo.Context) error {
 	var req model.TransactionPayload
 
 	if err := c.Bind(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{"remark": err.Error()})
+		c.Logger().Infof("Error binding request: %v", err)
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{"remark": "Request tidak valid"})
 	}
 
 	// Validate the struct
 	if err := util.Validator.Struct(req); err != nil {
 
 		// Check if the error is a validation error
-		if _, ok := err.(*validator.ValidationErrors); !ok {
-
-			c.Logger().Info(err)
-
-			// Custom error handling
-			return c.JSON(http.StatusBadRequest, map[string]string{
-				"remark": "Nomor rekening tidak valid",
-			})
+		var validationErrors validator.ValidationErrors
+		if errors.As(err, &validationErrors) {
+			for _, fieldError := range validationErrors {
+				switch fieldError.Field() {
+				case "NasabahId":
+					return c.JSON(http.StatusBadRequest, map[string]string{
+						"remark": "Nomor rekening tidak valid",
+					})
+				case "Amount":
+					if fieldError.Tag() == "gt" {
+						return c.JSON(http.StatusBadRequest, map[string]string{
+							"remark": "Nominal harus lebih besar dari 0",
+						})
+					}
+					return c.JSON(http.StatusBadRequest, map[string]string{
+						"remark": "Nominal tidak valid",
+					})
+				}
+			}
 		}
 
-		// Custom error handling
+		// Fallback unknown error
+		c.Logger().Info(err)
 		return c.JSON(http.StatusBadRequest, map[string]string{
-			"remark": err.Error(),
+			"remark": "Request tidak valid",
 		})
 	}
 

@@ -1,0 +1,14 @@
+build/
+vendor/
+
+# Exclude git history and configuration.
+.gitignore
+
+# Exclude "build-time" ignore files.
+.dockerignore
+.gcloudignore
+
+.air.*.toml
+.editorconfig
+Makefile
+dock
