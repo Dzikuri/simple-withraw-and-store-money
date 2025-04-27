@@ -13,8 +13,8 @@ CREATE TABLE IF NOT EXISTS "public"."history_transaction_nasabah" (
     CONSTRAINT fk_nasabah FOREIGN KEY (nasabah_id) REFERENCES "nasabah" (id)
 );
 
-CREATE INDEX idx_nasabah_id_history_transaction ON history_transaction_nasabah (nasabah_id);
+CREATE INDEX IF NOT EXISTS idx_nasabah_id_history_transaction ON history_transaction_nasabah (nasabah_id);
 
-CREATE INDEX idx_transaction_type_history_transaction ON history_transaction_nasabah (transaction_type);
+CREATE INDEX IF NOT EXISTS idx_transaction_type_history_transaction ON history_transaction_nasabah (transaction_type);
 
 COMMIT;

@@ -43,7 +43,7 @@ func InitConfig() Config {
 		AppEnv:       GetEnv("APP_ENV", "development"),
 		AppDebug:     GetEnv("APP_DEBUG", "true"),
 		ApiPort:      GetEnv("API_PORT", "8090"),
-		DBUsername:   GetEnv("DB_USERNAME", "root"),
+		DBUsername:   GetEnv("DB_USERNAME", "postgres"),
 		DBPort:       GetEnv("DB_PORT", "5432"),
 		DBPassword:   GetEnv("DB_PASSWORD", ""),
 		DBHost:       GetEnv("DB_HOST", "localhost"),

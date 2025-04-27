@@ -17,4 +17,7 @@ func NewRouter(nasabahHandler *handler.NasabahHandler) *RouteConfig {
 
 func (r *RouteConfig) RegisterApiRouter(e *echo.Echo) {
 	e.POST("/daftar", r.NasabahHandler.CreateNasabah)
+	e.GET("/saldo/:no_rekening", r.NasabahHandler.GetSaldo)
+	e.POST("/tabung", r.NasabahHandler.Deposit)
+	e.POST("/tarik", r.NasabahHandler.Withdraw)
 }

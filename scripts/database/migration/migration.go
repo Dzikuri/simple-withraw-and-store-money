@@ -9,40 +9,49 @@ import (
 	"github.com/dzikuri/simple-withdraw-and-store-money/util"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/gommon/log"
+	"github.com/rs/zerolog"
 )
 
 func main() {
+
+	// NOTE: Setup Logger
+	logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
+
 	if len(os.Args) < 2 {
 		log.Fatalf("Missing migration direction: up or down")
 	}
 
 	direction := strings.ToLower(os.Args[1])
 
-	db, err := util.ConnectDB()
+	db, err := util.ConnectDB(logger)
 	if err != nil {
-		log.Fatalf("Failed to connect to DB: %v", err)
+		logger.Fatal().Err(err).Msg("Failed to connect to DB")
 	}
 	defer db.Close()
 
 	switch direction {
 	case "up":
 		if err := migrateUp(db); err != nil {
-			log.Fatalf("Failed to migrate up: %v", err)
+			logger.Fatal().Err(err).Msg("Failed to migrate up")
 		}
 	case "down":
 		if err := migrateDown(db); err != nil {
-			log.Fatalf("Failed to migrate down: %v", err)
+			logger.Fatal().Err(err).Msg("Failed to migrate down")
 		}
 	default:
-		log.Fatalf("Unknown migration direction: %s", direction)
+		logger.Fatal().Err(err).Msgf("Failed to migrate with unknown direction : %s", direction)
 	}
 }
 
 func migrateUp(db *pgxpool.Pool) error {
+	// NOTE: Setup Logger
+	logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
+
 	ctx := context.Background()
 
 	files, err := os.ReadDir("scripts/database/migration")
 	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to read migration directory")
 		return fmt.Errorf("failed to read migration directory: %w", err)
 	}
 
@@ -58,25 +67,31 @@ func migrateUp(db *pgxpool.Pool) error {
 		path := "scripts/database/migration/" + name
 		query, err := os.ReadFile(path)
 		if err != nil {
+			logger.Fatal().Err(err).Msg("Failed to read migration file")
 			return fmt.Errorf("failed to read migration file %s: %w", name, err)
 		}
 
-		log.Infof("Applying migration: %s", name)
+		logger.Info().Msgf("Applying migration: %s", name)
 		_, err = db.Exec(ctx, string(query))
 		if err != nil {
+			logger.Fatal().Err(err).Msg("Failed to execute migration")
 			return fmt.Errorf("failed to execute migration %s: %w", name, err)
 		}
 	}
 
-	log.Info("Migration up completed")
+	logger.Info().Msg("Migration up completed")
 	return nil
 }
 
 func migrateDown(db *pgxpool.Pool) error {
+	// NOTE: Setup Logger
+	logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
+
 	ctx := context.Background()
 
 	files, err := os.ReadDir("scripts/database/migration")
 	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to read migration directory")
 		return fmt.Errorf("failed to read migration directory: %w", err)
 	}
 
@@ -94,16 +109,18 @@ func migrateDown(db *pgxpool.Pool) error {
 		path := "scripts/database/migration/" + name
 		query, err := os.ReadFile(path)
 		if err != nil {
+			logger.Fatal().Err(err).Msg("Failed to read migration file")
 			return fmt.Errorf("failed to read migration file %s: %w", name, err)
 		}
 
-		log.Infof("Rolling back migration: %s", name)
+		logger.Info().Msgf("Rolling back migration: %s", name)
 		_, err = db.Exec(ctx, string(query))
 		if err != nil {
+			logger.Fatal().Err(err).Msg("Failed to execute rollback")
 			return fmt.Errorf("failed to execute rollback %s: %w", name, err)
 		}
 	}
 
-	log.Info("Migration down completed")
+	logger.Info().Msg("Migration down completed")
 	return nil
 }

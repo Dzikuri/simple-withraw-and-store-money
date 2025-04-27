@@ -14,8 +14,8 @@ CREATE TABLE IF NOT EXISTS "public"."nasabah" (
     "deleted_at" timestamptz NULL
 );
 
-CREATE UNIQUE INDEX idx_rekening_number_nasabah ON "public"."nasabah" ("rekening_number");
-CREATE INDEX idx_nik_nasabah ON "public"."nasabah" ("nik");
-CREATE INDEX idx_phone_number_nasabah ON "public"."nasabah" ("phone_number");
+CREATE UNIQUE INDEX IF NOT EXISTS idx_rekening_number_nasabah ON "public"."nasabah" ("rekening_number");
+CREATE INDEX IF NOT EXISTS idx_nik_nasabah ON "public"."nasabah" ("nik");
+CREATE INDEX IF NOT EXISTS idx_phone_number_nasabah ON "public"."nasabah" ("phone_number");
 
 COMMIT;
