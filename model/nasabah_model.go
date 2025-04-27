@@ -26,7 +26,7 @@ type CreateNasabah struct {
 
 type TransactionPayload struct {
 	NasabahId string `json:"no_rekening" validate:"required,numeric"`
-	Amount    int64  `json:"nominal" validate:"required,numeric"`
+	Amount    int64  `json:"nominal" validate:"required,gt=0"`
 }
 
 type CheckByNikOrPhoneNumber struct {
