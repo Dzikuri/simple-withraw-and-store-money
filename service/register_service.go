@@ -2,10 +2,11 @@ package service
 
 import (
 	"context"
-	"errors"
 
 	"github.com/dzikuri/simple-withdraw-and-store-money/model"
 	"github.com/dzikuri/simple-withdraw-and-store-money/repository"
+	"github.com/dzikuri/simple-withdraw-and-store-money/util"
+	"github.com/rs/zerolog"
 )
 
 type RegisterService interface {
@@ -14,15 +15,14 @@ type RegisterService interface {
 
 type registerService struct {
 	NasabahRepository repository.NasabahRepository
+	Logger            zerolog.Logger
 }
 
-func NewRegisterService(nasabahRepository repository.NasabahRepository) RegisterService {
-	return &registerService{NasabahRepository: nasabahRepository}
+func NewRegisterService(nasabahRepository repository.NasabahRepository, logger zerolog.Logger) RegisterService {
+	return &registerService{NasabahRepository: nasabahRepository, Logger: logger}
 }
 
 func (s *registerService) RegisterNasabah(ctx context.Context, payload *model.CreateNasabah) (string, error) {
-
-	// NOTE: Check if payload is valid
 
 	// NOTE: Check if nasabah exist
 	nasabahExist, err := s.NasabahRepository.IfNasabahExist(ctx, &model.CheckByNikOrPhoneNumber{Nik: payload.Nik, PhoneNumber: payload.PhoneNumber})
@@ -30,7 +30,7 @@ func (s *registerService) RegisterNasabah(ctx context.Context, payload *model.Cr
 		return "", err
 	}
 	if nasabahExist {
-		return "", errors.New("nasabah already exist")
+		return "", util.ErrNasabahAlreadyExist
 	}
 
 	// NOTE: Create Nasabah

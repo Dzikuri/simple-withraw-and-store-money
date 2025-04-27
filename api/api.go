@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -18,24 +17,30 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/rs/zerolog"
 )
 
 type APIserve struct {
-	DB *pgxpool.Pool
+	DB     *pgxpool.Pool
+	Logger zerolog.Logger
 }
 
-func NewAPIServe(db *pgxpool.Pool) *APIserve {
-	return &APIserve{DB: db}
+func NewAPIServe(db *pgxpool.Pool, logger zerolog.Logger) *APIserve {
+	return &APIserve{DB: db, Logger: logger}
 }
 
 func (r *APIserve) Serve() {
 	// NOTE: Echo Framework
 	e := echo.New()
 
-	e.Use(middleware.Logger())
+	// NOTE: Use a zerolog middleware to log each request
+	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
+		Format: "method=${method}, uri=${uri}, status=${status}, time=${time_rfc3339}\n",
+	}))
 
 	// NOTE: Health Check
 	e.GET("/health", func(c echo.Context) error {
+		r.Logger.Info().Msg("Health check called")
 		return c.JSON(http.StatusOK, map[string]interface{}{
 			"status": "ok",
 		})
@@ -43,46 +48,49 @@ func (r *APIserve) Serve() {
 
 	// NOTE: Error Handling Page not found
 	e.Any("/*", func(c echo.Context) error {
+		r.Logger.Warn().Msg("Route not found")
 		return c.JSON(http.StatusNotFound, map[string]interface{}{"remark": "Not found"})
 	})
 
 	// NOTE: Call Repository
-	nasabahRepository := repository.NewNasabahRepository(r.DB)
-	nasabahTransactionRepository := repository.NewNasabahTransactionRepository(r.DB)
+	nasabahRepository := repository.NewNasabahRepository(r.DB, r.Logger)
+	nasabahTransactionRepository := repository.NewNasabahTransactionRepository(r.DB, r.Logger)
 
 	// NOTE: Call Service
-	registerService := service.NewRegisterService(nasabahRepository)
-	transactionService := service.NewTransactionService(nasabahTransactionRepository, nasabahRepository)
+	registerService := service.NewRegisterService(nasabahRepository, r.Logger)
+	transactionService := service.NewTransactionService(nasabahTransactionRepository, nasabahRepository, r.Logger)
 
 	// NOTE: Call Handler
-	nasabahHandler := handler.NewNasabahHandler(registerService, transactionService)
+	nasabahHandler := handler.NewNasabahHandler(registerService, transactionService, r.Logger)
 
 	// NOTE: Call Router
 	routeConfig := router.NewRouter(nasabahHandler)
 	routeConfig.RegisterApiRouter(e)
 
-	// Handle graceful shutdown
+	// NOTE: Handle graceful shutdown
 	go func() {
 		// Listen for interrupt or termination signals
 		sigs := make(chan os.Signal, 1)
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 		sigReceived := <-sigs
 
-		log.Printf("Received signal: %s. Shutting down gracefully...", sigReceived)
+		r.Logger.Info().Str("signal", sigReceived.String()).Msg("Received signal, starting graceful shutdown")
 
 		// Attempt to stop the Echo server gracefully
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
 		if err := e.Shutdown(ctx); err != nil {
-			log.Fatalf("Error during server shutdown: %v", err)
+			r.Logger.Error().Err(err).Msg("Error during server shutdown")
+
 		}
-		log.Println("Server gracefully stopped")
+		r.Logger.Info().Msg("Server gracefully stopped")
+
 	}()
 
-	// Start the Echo server
-	log.Println("Server is starting...")
+	// NOTE: Start the Echo server
+	r.Logger.Info().Msg("Starting server")
 	if err := e.Start(fmt.Sprintf(":%s", config.ConfigEnv.ApiPort)); err != nil {
-		log.Fatalf("Error starting server: %v", err)
+		r.Logger.Fatal().Err(err).Msg("Error starting server")
 	}
 }

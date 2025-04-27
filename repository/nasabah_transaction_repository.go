@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/rs/zerolog"
 )
 
 type NasabahTransactionRepository interface {
@@ -13,11 +14,12 @@ type NasabahTransactionRepository interface {
 }
 
 type nasabahTransactionRepository struct {
-	db *pgxpool.Pool
+	db     *pgxpool.Pool
+	logger zerolog.Logger
 }
 
-func NewNasabahTransactionRepository(db *pgxpool.Pool) *nasabahTransactionRepository {
-	return &nasabahTransactionRepository{db: db}
+func NewNasabahTransactionRepository(db *pgxpool.Pool, logger zerolog.Logger) *nasabahTransactionRepository {
+	return &nasabahTransactionRepository{db: db, logger: logger}
 }
 
 func (r *nasabahTransactionRepository) DepositMoney(ctx context.Context, rekeningNumber string, amount int64) (int64, error) {
